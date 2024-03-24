@@ -9,8 +9,6 @@
   "author": "Gabriel Rocha, Andre Specht, Nicolas Wajima",
   "dependencies": {
     "busboy": "^1.6.0",
-    "ejs": "^3.1.9",
-    "express": "^4.19.1",
-    "multer": "^1.4.5-lts.1"
+    "ejs": "^3.1.9"
   }
 }
