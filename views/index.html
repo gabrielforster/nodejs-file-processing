@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="public/base.css">
+    <link rel="stylesheet" type="text/css" href="public/index.css">
+  </head>
+
+  <body>
+    <nav>
+      <ul>
+        <li><a href="/uploads">View uploads</a></li>
+      </ul>
+    </nav>
+
+    <div class="container">
+      <form method="POST" action="upload" enctype="multipart/form-data" >
+        <input type="file" name="file"><br />
+        <input type="text" name="filter"><br />
+        <input type="submit">
+      </form>
+    </div>
+
+  </body>
+</html>
