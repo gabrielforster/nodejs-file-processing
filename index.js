@@ -74,31 +74,66 @@ function handleUploadsList(req, res) {
   }
 }
 
+/**
+  * @param {string} template - path to the HTML template
+  * @param {Record<string, string | Array | Object> | null} data - data to be injected into the template
+  * @param {Record<string, any> | null} options - data to be injected into the template
+  *
+  * @returns {string} - Rendered HTML template
+*/
+function renderHTMLTemplate(template, data = {}, options = {}) {
+  if (!template.endsWith('.html')) {
+    throw new Error('Invalid template file, can only render HTML');
+  }
+
+  const templateDir = options?.dir ?? "views"
+  const templatePath = `${templateDir}/${template}`;
+
+  if (!fs.existsSync(templatePath)) {
+    throw new Error('Template file not found');
+  }
+
+  if (!data) {
+    return fs.readFileSync(template, 'utf8');
+  }
+
+  const html = fs.readFileSync(templatePath, 'utf8');
+
+  const rendered = Object.entries(data).reduce((acc, [key, value]) => {
+    if (Array.isArray(value)) {
+      const list = value.map((item) => `<li>${item}</li>`).join('');
+      return acc.replace(`{{${key}}}`, list);
+    }
+
+    return acc.replace(`{{${key}}}`, value);
+  }, html);
+
+  return rendered;
+}
+
 http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/upload") {
     uploadHandler(req, res);
   } else if (req.method === "GET" && req.url.startsWith("/uploads")) {
     handleUploadsList(req, res);
   } else if (req.method === "GET" && req.url === "/") {
-    res.writeHead(200, { Connection: "close" });
-    res.end(`
-      <html>
-        <head>
-          <title>Upload File</title>
-        </head>
-        <body>
-          <ul>
-            <li><a href="/uploads">View uploads</a></li>
-          </ul>
+    const content = renderHTMLTemplate('index.html', { title: 'Upload File' });
 
-          <form method="POST" action="upload" enctype="multipart/form-data" >
-            <input type="file" name="file"><br />
-            <input type="text" name="filter"><br />
-            <input type="submit">
-          </form>
-        </body>
-      </html>
-    `);
+    res.writeHead(200, { Connection: "close" });
+    res.end(content);
+  } else if (req.method === "GET" && req.url.startsWith("/public")) {
+    req.url = req.url.slice(1);
+
+    if (fs.existsSync(req.url)) {
+      const content = fs.readFileSync(req.url, 'utf8');
+
+      res.writeHead(200, { Connection: "close" });
+      res.end(content);
+      return;
+    }
+
+    res.writeHead(404, { Connection: "close" });
+    res.end();
   } else {
     res.writeHead(404, { Connection: "close" });
     res.end("Not Found");
