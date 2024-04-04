@@ -1,5 +1,5 @@
-// @ts-check
 import { randomUUID } from "crypto";
+
 import http from "http";
 import fs from "fs";
 import busboy from "busboy";
@@ -105,27 +105,33 @@ function handleIndex(req, res) {
     res.end(content);
 }
 
-http.createServer((req, res) => {
-    if (req.method === "POST" && req.url === "/upload") uploadHandler(req, res);
-    else if (req.method === "GET" && req.url.startsWith("/uploads")) handleListUploads(req, res);
-    else if (req.method === "GET" && req.url === "/") handleIndex(req, res);
-    else if (req.method === "GET" && req.url.startsWith("/public")) {
-        req.url = req.url.slice(1);
+function handlePublic(req, res) {
+    req.url = req.url.slice(1);
 
-        if (fs.existsSync(req.url)) {
-            const content = fs.readFileSync(req.url, 'utf8');
+    if (fs.existsSync(req.url)) {
+        const content = fs.readFileSync(req.url, 'utf8');
 
-            res.writeHead(200, { Connection: "close" });
-            res.end(content);
-            return;
-        }
-
-        res.writeHead(404, { Connection: "close" });
-        res.end();
-    } else {
-        res.writeHead(303, { Connection: "close", Location: "/" });
-        res.end();
+        res.writeHead(200, { Connection: "close" });
+        res.end(content);
+        return;
     }
+
+    res.writeHead(404, { Connection: "close" });
+    res.end();
+}
+
+http.createServer((req, res) => {
+    if (req.method === "POST" && req.url === "/upload")
+        return uploadHandler(req, res);
+    else if (req.method === "GET" && req.url.startsWith("/uploads"))
+        return handleListUploads(req, res);
+    else if (req.method === "GET" && req.url === "/")
+        return handleIndex(req, res);
+    else if (req.method === "GET" && req.url.startsWith("/public"))
+        return handlePublic(req, res);
+
+    res.writeHead(303, { Connection: "close", Location: "/" });
+    res.end();
 }).listen(3000, "0.0.0.0", () => { // second param makes it accessible from other devices in the network
     console.log("Listening for requests");
 });
