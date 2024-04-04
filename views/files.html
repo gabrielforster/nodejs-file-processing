@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Files</title>
+        <link rel="stylesheet" type="text/css" href="public/base.css">
+        <link rel="stylesheet" type="text/css" href="public/files.css">
+    </head>
+
+    <body>
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+            </ul>
+        </nav>
+
+        <div class="container">
+            <section class="files-wrapper">
+                <% if (files.length) { %>
+                    <ul class="files-list">
+                        <% files.forEach(function(file) { %>
+                        <li class="file">
+                            <p><%= file %></p>
+                            <a href="/uploads?file=<%= file %>">Download</a>
+                        </li>
+                        <% }); %>
+                    </ul>
+                <% } else { %>
+                    <p class="no-files-message">No files uploaded yet.</p>
+                <% } %>
+            </section>
+        </div>
+    </body>
+</html>

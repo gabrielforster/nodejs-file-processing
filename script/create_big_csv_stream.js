@@ -9,7 +9,7 @@ import fs from "fs";
   const header = "\"id\",\"name\",\"age\"\n";
   stream.write(header);
 
-  for (let i = 0; i < 2e7; i++) {
+  for (let i = 0; i < 2e8; i++) {
     const overWatermark = stream.write(`\"${i}\",\"user${i}\",${Math.floor(Math.random() * 100)}\n`);
 
     if (!overWatermark) {

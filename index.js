@@ -1,143 +1,131 @@
+// @ts-check
+import { randomUUID } from "crypto";
 import http from "http";
 import fs from "fs";
 import busboy from "busboy";
+import pino from "pino";
+
+import { render } from "./src/utils/index.js"
+
+const logger = pino();
+
 
 function uploadHandler(req, res) {
-  const bb = busboy({ headers: req.headers });
-  const fileData = [];
-  const fields = {};
+    const bb = busboy({ headers: req.headers });
+    const fileData = [];
+    const fields = {};
 
-  bb.on("file", (_, file, info) => {
-    const { filename } = info;
+    bb.on("file", (_, file, info) => {
+        const filename = randomUUID()
 
-    file.on("data", (data) => {
-      fileData.push(data);
-    })
+        file.on("data", (data) => {
+            fileData.push(data);
+        })
 
-    file.on("close", () => {
-      fs.writeFileSync(`uploads/${filename}`, Buffer.concat(fileData));
+        file.on("close", () => {
+            try {
+                const data = Buffer.concat(fileData);
+                logger.info({ filename, info, megabytes: (data.length / 1000 / 1000).toFixed(2) });
+
+                fs.writeFileSync(`uploads/${filename}`, data);
+            } catch (err) {
+                bb.emit("error", err);
+            }
+        });
     });
-  });
 
-  bb.on("field", (name, val) => {
-    fields[name] = val;
-  });
+    bb.on("field", (name, val) => {
+        fields[name] = val;
+    });
 
-  bb.on("close", () => {
-    res.writeHead(303, { Connection: "close", Location: "/" });
-    res.end();
-  });
+    bb.on("close", () => {
+        res.writeHead(303, { Connection: "close", Location: "/" });
+        res.end();
+    });
 
-  req.pipe(bb);
+    bb.on("error", (err) => {
+        if (err instanceof RangeError) {
+            logger.info("File too large")
+            res.writeHead(413, { Connection: "close" });
+            res.end("File too large");
+            bb.removeAllListeners();
+            return;
+        }
+
+        logger.error(err);
+        res.writeHead(500, { Connection: "close" });
+        res.end("Internal Server Error");
+        bb.removeAllListeners();
+    });
+
+    req.pipe(bb);
 }
 
-function handleUploadsList(req, res) {
-  const filename = new URL(req.url, `http://${req.headers.host}`).searchParams.get("file");
+function handleListUploads(req, res) {
+    const filename = new URL(req.url, `http://${req.headers.host}`).searchParams.get("file");
 
-  if (filename) {
-    const exists = fs.existsSync(`uploads/${filename}`);
-    if (exists) {
-      const file = fs.readFileSync(`uploads/${filename}`);
+    if (filename) {
+        const exists = fs.existsSync(`uploads/${filename}`);
+        if (exists) {
+            const file = fs.readFileSync(`uploads/${filename}`);
 
-      res.writeHead(200, {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename=${filename}`,
-        Connection: "close",
-      });
-      res.send(file)
-      return;
+            res.writeHead(200, {
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": `attachment; filename=${filename}`,
+                Connection: "close",
+            });
+            res.send(file)
+            return;
+        }
+
+        res.writeHead(404, { Connection: "close" });
+        res.end("File not found");
+        return
     }
 
-    res.writeHead(404, { Connection: "close" });
-    res.end("File not found");
-    return
-  }
+    try {
+        const files = fs.readdirSync("uploads");
 
-  try {
-    const files = fs.readdirSync("uploads");
+        const content = render('files.html', { files });
 
-    res.writeHead(200, { Connection: "close" });
-    res.end(`
-        <html>
-          <head></head>
-          <body>
-            <ul>
-              ${files.map((file) => `<li><a href="/uploads?file=${file}">${file}</a></li>`).join("")}
-            </ul>
-          </body>
-        </html>
-      `);
-  } catch (err) {
-    res.writeHead(500, { Connection: "close" });
-    res.end("Internal Server Error");
-    return;
-  }
-}
-
-/**
-  * @param {string} template - path to the HTML template
-  * @param {Record<string, string | Array | Object> | null} data - data to be injected into the template
-  * @param {Record<string, any> | null} options - data to be injected into the template
-  *
-  * @returns {string} - Rendered HTML template
-*/
-function renderHTMLTemplate(template, data = {}, options = {}) {
-  if (!template.endsWith('.html')) {
-    throw new Error('Invalid template file, can only render HTML');
-  }
-
-  const templateDir = options?.dir ?? "views"
-  const templatePath = `${templateDir}/${template}`;
-
-  if (!fs.existsSync(templatePath)) {
-    throw new Error('Template file not found');
-  }
-
-  if (!data) {
-    return fs.readFileSync(template, 'utf8');
-  }
-
-  const html = fs.readFileSync(templatePath, 'utf8');
-
-  const rendered = Object.entries(data).reduce((acc, [key, value]) => {
-    if (Array.isArray(value)) {
-      const list = value.map((item) => `<li>${item}</li>`).join('');
-      return acc.replace(`{{${key}}}`, list);
+        res.writeHead(200, { Connection: "close" });
+        res.end(content);
+    } catch (err) {
+        logger.error(err);
+        res.writeHead(500, { Connection: "close" });
+        res.end("Internal Server Error");
+        return;
     }
-
-    return acc.replace(`{{${key}}}`, value);
-  }, html);
-
-  return rendered;
 }
 
-http.createServer((req, res) => {
-  if (req.method === "POST" && req.url === "/upload") {
-    uploadHandler(req, res);
-  } else if (req.method === "GET" && req.url.startsWith("/uploads")) {
-    handleUploadsList(req, res);
-  } else if (req.method === "GET" && req.url === "/") {
-    const content = renderHTMLTemplate('index.html', { title: 'Upload File' });
+function handleIndex(req, res) {
+    const content = render('index.html');
 
     res.writeHead(200, { Connection: "close" });
     res.end(content);
-  } else if (req.method === "GET" && req.url.startsWith("/public")) {
-    req.url = req.url.slice(1);
+}
 
-    if (fs.existsSync(req.url)) {
-      const content = fs.readFileSync(req.url, 'utf8');
+http.createServer((req, res) => {
+    if (req.method === "POST" && req.url === "/upload") uploadHandler(req, res);
+    else if (req.method === "GET" && req.url.startsWith("/uploads")) handleListUploads(req, res);
+    else if (req.method === "GET" && req.url === "/") handleIndex(req, res);
+    else if (req.method === "GET" && req.url.startsWith("/public")) {
+        req.url = req.url.slice(1);
 
-      res.writeHead(200, { Connection: "close" });
-      res.end(content);
-      return;
+        if (fs.existsSync(req.url)) {
+            const content = fs.readFileSync(req.url, 'utf8');
+
+            res.writeHead(200, { Connection: "close" });
+            res.end(content);
+            return;
+        }
+
+        res.writeHead(404, { Connection: "close" });
+        res.end();
+    } else {
+        res.writeHead(303, { Connection: "close", Location: "/" });
+        res.end();
     }
-
-    res.writeHead(404, { Connection: "close" });
-    res.end();
-  } else {
-    res.writeHead(404, { Connection: "close" });
-    res.end("Not Found");
-  }
-}).listen(3000, "0.0.0.0", () => {
-  console.log("Listening for requests");
+}).listen(3000, "0.0.0.0", () => { // second param makes it accessible from other devices in the network
+    console.log("Listening for requests");
 });

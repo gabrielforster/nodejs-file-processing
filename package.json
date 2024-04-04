@@ -9,6 +9,7 @@
   "author": "Gabriel Rocha, Andre Specht, Nicolas Wajima",
   "dependencies": {
     "busboy": "^1.6.0",
-    "ejs": "^3.1.9"
+    "ejs": "^3.1.9",
+    "pino": "^8.19.0"
   }
 }
