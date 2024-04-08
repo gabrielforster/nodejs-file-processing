@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Nodejs Streams</title>
+        <link rel="stylesheet" type="text/css" href="public/base.css">
+        <link rel="stylesheet" type="text/css" href="public/index.css">
+    </head>
+
+    <body>
+        <nav>
+            <ul>
+                <li><a href="/uploads">Uploads</a></li>
+            </ul>
+        </nav>
+
+        <div class="container">
+            <form method="POST" action="upload" enctype="multipart/form-data" >
+                <input type="file" name="file"><br />
+                <div class="upload-bar">
+                    <div class="progress"></div>
+                </div>
+                <input type="submit">
+                <input type="reset">
+            </form>
+        </div>
+    </body>
+
+    <script>
+        const form = document.querySelector("form");
+        const progressBar = document.querySelector(".progress");
+        const uploadBar = document.querySelector(".upload-bar");
+
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+
+            xhr.open("POST", "upload");
+            xhr.upload.addEventListener("progress", (e) => {
+                const percent = e.loaded / e.total * 100;
+                progressBar.style.width = percent + "%";
+            });
+
+            progressBar.style.display = "block";
+            uploadBar.style.display = "block";
+
+            xhr.send(formData);
+            xhr.onreadystatechange = function requestReadyStateChange() {
+                if (xhr.readyState === 4) {
+                    progressBar.style.width = "0";
+                    uploadBar.style.display = "none";
+                    progressBar.style.display = "none";
+
+                    if (xhr.status === 200) {
+                        alert("Arquivo enviado com sucesso!");
+                        window.location.reload();
+                    } else {
+                        alert(`Falha ao enviar o arquivo.\nErro: ${xhr.status}, ${xhr.statusText}, ${xhr.responseText}`);
+                    }
+                }
+            }
+        });
+    </script>
+</html>

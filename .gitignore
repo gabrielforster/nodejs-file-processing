@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# TODO: REMOVE
+uploads/
+
+# CSV test files
+big.csv
+big_stream.csv
+
+# Go test server
+go_test
