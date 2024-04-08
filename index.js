@@ -44,6 +44,8 @@ function uploadHandler(req, res) {
     });
 
     bb.on("error", (err) => {
+        logger.child({ message: "bb error" }).error(err);
+
         if (err instanceof RangeError) {
             logger.info("File too large")
             res.writeHead(413, { Connection: "close" });
@@ -60,7 +62,6 @@ function uploadHandler(req, res) {
             return;
         }
 
-        logger.error(err);
         res.writeHead(500, { Connection: "close" });
         res.end("Internal Server Error");
         bb.removeAllListeners();
