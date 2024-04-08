@@ -53,7 +53,7 @@
 
                     if (xhr.status === 200) {
                         alert("Arquivo enviado com sucesso!");
-                        window.reload();
+                        window.location.reload();
                     } else {
                         alert(`Falha ao enviar o arquivo.\nErro: ${xhr.status}, ${xhr.statusText}, ${xhr.responseText}`);
                     }
