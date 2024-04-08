@@ -83,7 +83,7 @@ function handleListUploads(req, res) {
                 "Content-Disposition": `attachment; filename=${filename}`,
                 Connection: "close",
             });
-            res.send(file)
+            res.end(file)
             return;
         }
 
