@@ -1,5 +1,3 @@
-import { randomUUID } from "crypto";
-
 import http from "http";
 import fs from "fs";
 import busboy from "busboy";
@@ -9,14 +7,16 @@ import { render } from "./src/utils/index.js"
 
 const logger = pino();
 
-
 function uploadHandler(req, res) {
     const bb = busboy({ headers: req.headers });
     const fileData = [];
     const fields = {};
 
     bb.on("file", (_, file, info) => {
-        const filename = randomUUID()
+        const filename = info.filename;
+        if (fs.existsSync(`uploads/${filename}`)) {
+            bb.emit("error", new Error("File already exists"));
+        }
 
         file.on("data", (data) => {
             fileData.push(data);
@@ -48,6 +48,14 @@ function uploadHandler(req, res) {
             logger.info("File too large")
             res.writeHead(413, { Connection: "close" });
             res.end("File too large");
+            bb.removeAllListeners();
+            return;
+        }
+
+        if (err.message === "File already exists") {
+            logger.info("File already exists")
+            res.writeHead(409, { Connection: "close" });
+            res.end("File already exists");
             bb.removeAllListeners();
             return;
         }
