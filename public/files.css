@@ -12,7 +12,7 @@
 }
 
 .container .files-wrapper .files-list {
-    width: 30%;
+    width: 50%;
     margin-inline: auto;
     margin-bottom: 20px;
     padding: 10px;
@@ -27,4 +27,23 @@
     align-items: center;
     padding: 10px;
     border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.container .files-wrapper .files-list .file .filename {
+    width: 40%;
+    text-overflow: ellipsis;
+}
+
+.container .files-wrapper .files-list .file .size {
+    width: 20%;
+}
+
+.container .files-wrapper .files-list .file .download {
+    width: 20%;
+    text-align: center;
+    color: #333;
+    font-weight: bold;
 }

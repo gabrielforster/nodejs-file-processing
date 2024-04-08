@@ -19,8 +19,9 @@
                     <ul class="files-list">
                         <% files.forEach(function(file) { %>
                         <li class="file">
-                            <p><%= file %></p>
-                            <a href="/uploads?file=<%= file %>">Download</a>
+                            <p class="filename"><%= file.name %></p>
+                            <p class="size"><%= file.size %></p>
+                            <a class="download" href="/uploads?file=<%= file.name %>" target="blank">Download</a>
                         </li>
                         <% }); %>
                     </ul>

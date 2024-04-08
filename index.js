@@ -76,15 +76,29 @@ function handleListUploads(req, res) {
     if (filename) {
         const exists = fs.existsSync(`uploads/${filename}`);
         if (exists) {
-            const file = fs.readFileSync(`uploads/${filename}`);
+            try {
+                const file = fs.readFileSync(`uploads/${filename}`);
 
-            res.writeHead(200, {
-                "Content-Type": "application/octet-stream",
-                "Content-Disposition": `attachment; filename=${filename}`,
-                Connection: "close",
-            });
-            res.end(file)
-            return;
+                res.writeHead(200, {
+                    "Content-Type": "application/octet-stream",
+                    "Content-Disposition": `attachment; filename=${filename}`,
+                    Connection: "close",
+                });
+                res.end(file)
+                return;
+            } catch (err) {
+                logger.child({ message: "error while reading file" }).error(err);
+
+                if (err instanceof RangeError) {
+                    res.writeHead(413, { Connection: "close" });
+                    res.end("File too large");
+                    return;
+                }
+
+                res.writeHead(500, { Connection: "close" });
+                res.end("Internal Server Error");
+                return;
+            }
         }
 
         res.writeHead(404, { Connection: "close" });
@@ -95,7 +109,26 @@ function handleListUploads(req, res) {
     try {
         const files = fs.readdirSync("uploads");
 
-        const content = render('files.html', { files });
+        const filesWithStats = files.map((file) => {
+            const stats = fs.statSync(`uploads/${file}`);
+            const size = () => {
+                const bytes = stats.size;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+
+                if (bytes === 0) return '0 Byte';
+
+                const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+
+                return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+            };
+
+            return {
+                name: file,
+                size: size()
+            };
+        });
+
+        const content = render('files.html', { files: filesWithStats });
 
         res.writeHead(200, { Connection: "close" });
         res.end(content);
