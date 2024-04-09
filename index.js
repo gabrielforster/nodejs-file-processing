@@ -154,13 +154,13 @@ function handlePublic(req, res) {
 
     http.createServer((req, res) => {
         if (req.method === "POST" && req.url === "/upload")
-        return uploadHandler(req, res);
+            return uploadHandler(req, res);
         else if (req.method === "GET" && req.url.startsWith("/uploads"))
-        return handleListUploads(req, res);
+            return handleListUploads(req, res);
         else if (req.method === "GET" && req.url === "/")
-        return handleIndex(req, res);
+            return handleIndex(req, res);
         else if (req.method === "GET" && req.url.startsWith("/public"))
-        return handlePublic(req, res);
+            return handlePublic(req, res);
 
         res.writeHead(303, { Connection: "close", Location: "/" });
         res.end();
