@@ -4,19 +4,19 @@ import CopyPlugin from "copy-webpack-plugin";
 const __dirname = path.resolve();
 
 export default {
-    mode: "development",
+    mode: "production",
     entry: "./index.js",
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "index.bundle.js",
+        filename: "index.bundle.cjs",
         publicPath: '/public',
     },
     target: "node",
     plugins: [
         new CopyPlugin({
             patterns: [
-                { from: "./public/*", to: "./public" },
-                { from: "./views/*", to: "./views" },
+                { from: "./public/*", to: "./" },
+                { from: "./views/*", to: "./" },
             ],
         }),
     ],
