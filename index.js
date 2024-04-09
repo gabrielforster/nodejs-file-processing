@@ -7,17 +7,19 @@ import { render } from "./src/utils/index.js"
 
 const logger = pino();
 
+const UPLOADS_DIR = "/tmp/uploads";
+
 function uploadHandler(req, res) {
     const bb = busboy({ headers: req.headers });
 
     bb.on("file", (_, file, info) => {
         const filename = info.filename;
 
-        if (fs.existsSync(`uploads/${filename}`)) {
+        if (fs.existsSync(`${UPLOADS_DIR}/${filename}`)) {
             bb.emit("error", new Error("File already exists"));
         }
 
-        const writeStream = fs.createWriteStream(`uploads/${filename}`);
+        const writeStream = fs.createWriteStream(`${UPLOADS_DIR}/${filename}`);
         file.pipe(writeStream);
     });
 
@@ -57,10 +59,10 @@ function handleListUploads(req, res) {
     const filename = new URL(req.url, `http://${req.headers.host}`).searchParams.get("file");
 
     if (filename) {
-        const exists = fs.existsSync(`uploads/${filename}`);
+        const exists = fs.existsSync(`${UPLOADS_DIR}/${filename}`);
         if (exists) {
             try {
-                const file = fs.createReadStream(`uploads/${filename}`);
+                const file = fs.createReadStream(`${UPLOADS_DIR}/${filename}`);
 
                 res.writeHead(200, {
                     "Content-Type": "application/octet-stream",
@@ -90,10 +92,10 @@ function handleListUploads(req, res) {
     }
 
     try {
-        const files = fs.readdirSync("uploads");
+        const files = fs.readdirSync(UPLOADS_DIR);
 
         const filesWithStats = files.map((file) => {
-            const stats = fs.statSync(`uploads/${file}`);
+            const stats = fs.statSync(`${UPLOADS_DIR}/${file}`);
             const size = () => {
                 const bytes = stats.size;
                 const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -145,18 +147,24 @@ function handlePublic(req, res) {
     res.end();
 }
 
-http.createServer((req, res) => {
-    if (req.method === "POST" && req.url === "/upload")
+(() => {
+    if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+
+    http.createServer((req, res) => {
+        if (req.method === "POST" && req.url === "/upload")
         return uploadHandler(req, res);
-    else if (req.method === "GET" && req.url.startsWith("/uploads"))
+        else if (req.method === "GET" && req.url.startsWith("/uploads"))
         return handleListUploads(req, res);
-    else if (req.method === "GET" && req.url === "/")
+        else if (req.method === "GET" && req.url === "/")
         return handleIndex(req, res);
-    else if (req.method === "GET" && req.url.startsWith("/public"))
+        else if (req.method === "GET" && req.url.startsWith("/public"))
         return handlePublic(req, res);
 
-    res.writeHead(303, { Connection: "close", Location: "/" });
-    res.end();
-}).listen(3000, "0.0.0.0", () => { // second param makes it accessible from other devices in the network
-    console.log("Listening for requests");
-});
+        res.writeHead(303, { Connection: "close", Location: "/" });
+        res.end();
+    }).listen(3000, "0.0.0.0", () => {
+        console.log("Listening for requests");
+    });
+})()
