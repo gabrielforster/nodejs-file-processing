@@ -9,33 +9,16 @@ const logger = pino();
 
 function uploadHandler(req, res) {
     const bb = busboy({ headers: req.headers });
-    const fileData = [];
-    const fields = {};
 
     bb.on("file", (_, file, info) => {
         const filename = info.filename;
+
         if (fs.existsSync(`uploads/${filename}`)) {
             bb.emit("error", new Error("File already exists"));
         }
 
-        file.on("data", (data) => {
-            fileData.push(data);
-        })
-
-        file.on("close", () => {
-            try {
-                const data = Buffer.concat(fileData);
-                logger.info({ filename, info, megabytes: (data.length / 1000 / 1000).toFixed(2) });
-
-                fs.writeFileSync(`uploads/${filename}`, data);
-            } catch (err) {
-                bb.emit("error", err);
-            }
-        });
-    });
-
-    bb.on("field", (name, val) => {
-        fields[name] = val;
+        const writeStream = fs.createWriteStream(`uploads/${filename}`);
+        file.pipe(writeStream);
     });
 
     bb.on("close", () => {
@@ -77,14 +60,14 @@ function handleListUploads(req, res) {
         const exists = fs.existsSync(`uploads/${filename}`);
         if (exists) {
             try {
-                const file = fs.readFileSync(`uploads/${filename}`);
+                const file = fs.createReadStream(`uploads/${filename}`);
 
                 res.writeHead(200, {
                     "Content-Type": "application/octet-stream",
                     "Content-Disposition": `attachment; filename=${filename}`,
                     Connection: "close",
                 });
-                res.end(file)
+                file.pipe(res);
                 return;
             } catch (err) {
                 logger.child({ message: "error while reading file" }).error(err);
