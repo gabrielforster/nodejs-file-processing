@@ -2,55 +2,62 @@ import http from "http";
 import fs from "fs";
 import busboy from "busboy";
 
-http.createServer((req, res) => {
-  if (req.method === "POST") {
-    const bb = busboy({ headers: req.headers });
-    let fileData = Buffer.from([]);
+function uploadHandler(req, res) {
+  const bb = busboy({ headers: req.headers });
+  const fileData = [];
+  const fields = {};
 
-    bb.on("file", (name, file, info) => {
-      const { filename, encoding, mimeType } = info;
+  bb.on("file", (name, file, info) => {
+    const { filename, encoding, mimeType } = info;
 
-      file.on("data", (data) => {
-        fileData = Buffer.concat([fileData, data]);
-      })
+    file.on("data", (data) => {
+      fileData.push(data);
+    })
 
-      file.on("close", () => {
-        fs.writeFileSync(`uploads/${filename}`, fileData);
+    file.on("close", () => {
+      fs.writeFileSync(`uploads/${filename}`, Buffer.concat(fileData));
+    });
+  });
+
+  bb.on("field", (name, val) => {
+    fields[name] = val;
+  });
+
+  bb.on("close", () => {
+    res.writeHead(303, { Connection: "close", Location: "/" });
+    res.end();
+  });
+
+  req.pipe(bb);
+}
+
+function handleUploadsList(req, res) {
+  const filename = new URL(req.url, `http://${req.headers.host}`).searchParams.get("file");
+
+  if (filename) {
+    const exists = fs.existsSync(`uploads/${filename}`);
+    if (exists) {
+      const file = fs.readFileSync(`uploads/${filename}`);
+
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename=${filename}`,
+        Connection: "close",
       });
-    });
-    bb.on("field", (name, val, info) => {
-      console.log(`Field [${name}]: value: %j %j`, val, info);
-    });
-
-    bb.on("close", () => {
-      console.log("Done parsing form!");
-      res.writeHead(303, { Connection: "close", Location: "/" });
-      res.end();
-    });
-
-    req.pipe(bb);
-  } else if (req.method === "GET" && req.url.startsWith("/uploads")) {
-    const filename = new URL(req.url, `http://${req.headers.host}`).searchParams.get("file");
-
-    if (filename) {
-      const exists = fs.existsSync(`uploads/${filename}`);
-      if (exists) {
-        const file = fs.readFileSync(`uploads/${filename}`);
-        res.writeHead(200, { Connection: "close" });
-        res.end(file);
-        return;
-      }
-
-      res.writeHead(404, { Connection: "close" });
-      res.end("File not found");
-      return
+      res.send(file)
+      return;
     }
 
-    try {
-      const files = fs.readdirSync("uploads");
+    res.writeHead(404, { Connection: "close" });
+    res.end("File not found");
+    return
+  }
 
-      res.writeHead(200, { Connection: "close" });
-      res.end(`
+  try {
+    const files = fs.readdirSync("uploads");
+
+    res.writeHead(200, { Connection: "close" });
+    res.end(`
         <html>
           <head></head>
           <body>
@@ -60,25 +67,41 @@ http.createServer((req, res) => {
           </body>
         </html>
       `);
-    } catch (err) {
-      res.writeHead(500, { Connection: "close" });
-      res.end("Internal Server Error");
-      return;
-    }
-  } else if (req.method === "GET") {
+  } catch (err) {
+    res.writeHead(500, { Connection: "close" });
+    res.end("Internal Server Error");
+    return;
+  }
+}
+
+http.createServer((req, res) => {
+  if (req.method === "POST" && req.url === "/upload") {
+    uploadHandler(req, res);
+  } else if (req.method === "GET" && req.url.startsWith("/uploads")) {
+    handleUploadsList(req, res);
+  } else if (req.method === "GET" && req.url === "/") {
     res.writeHead(200, { Connection: "close" });
     res.end(`
       <html>
-        <head></head>
+        <head>
+          <title>Upload File</title>
+        </head>
         <body>
-          <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="filefield"><br />
-            <input type="text" name="textfield"><br />
+          <ul>
+            <li><a href="/uploads">View uploads</a></li>
+          </ul>
+
+          <form method="POST" action="upload" enctype="multipart/form-data" >
+            <input type="file" name="file"><br />
+            <input type="text" name="filter"><br />
             <input type="submit">
           </form>
         </body>
       </html>
     `);
+  } else {
+    res.writeHead(404, { Connection: "close" });
+    res.end("Not Found");
   }
 }).listen(3000, "0.0.0.0", () => {
   console.log("Listening for requests");
