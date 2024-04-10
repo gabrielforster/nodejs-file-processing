@@ -1,12 +1,5 @@
 node_modules/
 dist/
 
-# TODO: REMOVE
-uploads/
+script
 
-# CSV test files
-big.csv
-big_stream.csv
-
-# Go test server
-go_test

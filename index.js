@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import http from "http";
 import fs from "fs";
 import busboy from "busboy";
@@ -13,7 +14,7 @@ function uploadHandler(req, res) {
     const bb = busboy({ headers: req.headers });
 
     bb.on("file", (_, file, info) => {
-        const filename = info.filename;
+        const filename = `${info.filename}-${randomUUID()}`;
 
         if (fs.existsSync(`${UPLOADS_DIR}/${filename}`)) {
             bb.emit("error", new Error("File already exists"));
